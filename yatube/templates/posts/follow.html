@@ -1,0 +1,20 @@
+{%  extends 'base.html' %}
+
+{% block title %}
+  Мои подписки
+{% endblock %}
+
+
+{% block content %}
+  <div class="container py-5">
+    {% include 'posts/includes/switcher.html' %}
+    <h1>Последние обновления авторов</h1>
+    {% for post in page_obj %}
+      {% with show_link_group=True show_link_profile=True %}
+        {% include 'posts/post.html' %}
+      {% endwith %}
+      {% if not forloop.last %}<hr>{% endif %}
+    {% endfor %}
+    {% include 'posts/includes/paginator.html' %}
+  </div>
+{% endblock %}
