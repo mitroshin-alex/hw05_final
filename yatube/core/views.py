@@ -15,4 +15,3 @@ def internal_server_error(request, *args, **kwargs):
 
 def permission_denied(request, *args, **kwargs):
     return render(request, 'core/403.html')
-
