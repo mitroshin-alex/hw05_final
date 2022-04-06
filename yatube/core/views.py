@@ -6,4 +6,13 @@ def page_not_found(request, exception):
 
 
 def csrf_failure(request, reason=''):
-    return render(request, 'core/403csrf.html')
+    return render(request, 'core/403_csrf.html')
+
+
+def internal_server_error(request, *args, **kwargs):
+    return render(request, 'core/500.html')
+
+
+def permission_denied(request, *args, **kwargs):
+    return render(request, 'core/403.html')
+
