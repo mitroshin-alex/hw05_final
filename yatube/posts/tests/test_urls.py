@@ -58,7 +58,16 @@ class PostURLTests(TestCase):
                 'posts/create_post.html',
                 'base.html',
                 'includes/header.html',
-                'includes/footer.html')
+                'includes/footer.html'),
+            '/follow/': (
+                'posts/follow.html',
+                 'base.html',
+                 'includes/header.html',
+                 'posts/includes/switcher.html',
+                 'posts/includes/paginator.html',
+                 'includes/footer.html'),
+            f'/profile/{cls.user_author.username}/follow/': '',
+            f'/profile/{cls.user_author.username}/unfollow/': '',
         }
         cls.url_non_existing_page = ('/non_existing_page/',)
 
@@ -117,7 +126,7 @@ class PostURLTests(TestCase):
         urls = PostURLTests.url_available_to_authorized_user.keys()
         for address in urls:
             with self.subTest(address=address):
-                response = self.author_client.get(address)
+                response = self.author_client.get(address, follow=True)
                 self.assertEqual(response.status_code,
                                  HTTPStatus.OK,
                                  f'Страница {address} должна быть '

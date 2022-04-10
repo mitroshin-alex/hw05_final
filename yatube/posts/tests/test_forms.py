@@ -9,7 +9,7 @@ from django.utils import timezone
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.conf import settings
 
-from ..models import Group, Post, Comment
+from ..models import Group, Post, Obscene
 from ..forms import PostForm, CommentForm
 
 TEMP_MEDIA_ROOT = tempfile.mkdtemp(dir=settings.BASE_DIR)
@@ -36,6 +36,39 @@ class PostFormTests(TestCase):
         cls.post = Post.objects.create(
             author=cls.user,
             text='Тестовая пост',
+        )
+        cls.small_gif_1 = (
+            b'\x47\x49\x46\x38\x39\x61\x02\x00'
+            b'\x01\x00\x80\x00\x00\x00\x00\x00'
+            b'\xFF\xFF\xFF\x21\xF9\x04\x00\x00'
+            b'\x00\x00\x00\x2C\x00\x00\x00\x00'
+            b'\x02\x00\x01\x00\x00\x02\x02\x0C'
+            b'\x0A\x00\x3B'
+        )
+        cls.small_gif_2 = (
+            b"\x47\x49\x46\x38\x39\x61\x01\x00\x01\x00\x80\x00\x00\xFF\xFF\xFF"
+            b"\xFF\xFF\xFF\x21\xF9\x04\x00\x00\x00\x00\x00\x2C\x00\x00\x00\x00"
+            b"\x01\x00\x01\x00\x00\x02\x01\x00\x00"
+        )
+        cls.small_gif_3 = (
+            b"\x47\x49\x46\x38\x39\x61\x01\x00\x01\x00\x80\x00\x00\xFF\xFF\xFF"
+            b"\xFF\xFF\xFF\x21\xF9\x04\x00\x00\x00\x00\x00\x2C\x00\x00\x00\x00"
+            b"\x01\x00\x01\x00\x00\x02\x01\x00\x00"
+        )
+        cls.uploaded_1 = SimpleUploadedFile(
+            name='small_1.gif',
+            content=cls.small_gif_1,
+            content_type='image/gif'
+        )
+        cls.uploaded_2 = SimpleUploadedFile(
+            name='small_2.gif',
+            content=cls.small_gif_2,
+            content_type='image/gif'
+        )
+        cls.uploaded_3 = SimpleUploadedFile(
+            name='small_3.gif',
+            content=cls.small_gif_3,
+            content_type='image/gif'
         )
         cls.form = PostForm()
 
@@ -283,23 +316,10 @@ class PostFormTests(TestCase):
         создание поста с картинкой, пост создается в базе данных."""
 
         post_count = Post.objects.count()
-        small_gif = (
-            b'\x47\x49\x46\x38\x39\x61\x02\x00'
-            b'\x01\x00\x80\x00\x00\x00\x00\x00'
-            b'\xFF\xFF\xFF\x21\xF9\x04\x00\x00'
-            b'\x00\x00\x00\x2C\x00\x00\x00\x00'
-            b'\x02\x00\x01\x00\x00\x02\x02\x0C'
-            b'\x0A\x00\x3B'
-        )
-        uploaded = SimpleUploadedFile(
-            name='small.gif',
-            content=small_gif,
-            content_type='image/gif'
-        )
         form_data = {
             'text': 'Тестовый пост с картинкой',
             'group': PostFormTests.group.id,
-            'image': uploaded,
+            'image': PostFormTests.uploaded_1,
         }
         response = self.authorized_client.post(
             reverse('posts:post_create'),
@@ -320,9 +340,56 @@ class PostFormTests(TestCase):
                 author=PostFormTests.user.id,
                 text=form_data['text'],
                 group=form_data['group'],
-                image='posts/small.gif'
+                image='posts/small_1.gif'
             ).exists()
         )
+
+    def test_post_form_edit_image(self):
+        """Проверяем, что при отправке валидного POST запроса на
+        добавление, изменение и удаление картинкой, пост правильно
+        записывается в базу данных."""
+
+        post_count = Post.objects.count()
+        form_data_tuple = (
+            {'text': PostFormTests.post.text,
+             'image': PostFormTests.uploaded_2},
+            {'text': PostFormTests.post.text,
+             'image': PostFormTests.uploaded_3},
+            {'text': PostFormTests.post.text,
+             'image': ''},
+        )
+        for form_data in form_data_tuple:
+            with self.subTest(form_data=form_data):
+                response = self.authorized_client.post(
+                    reverse('posts:post_edit',
+                            kwargs={'post_id': PostFormTests.post.id}),
+                    data=form_data,
+                    follow=True)
+                self.assertEqual(response.status_code,
+                                 HTTPStatus.OK,
+                                 'После отправки валидной формы '
+                                 'страница должна быть доступна')
+                self.assertEqual(
+                    Post.objects.count(),
+                    post_count,
+                    'После отправки валидной формы количество постов '
+                    'должно оставаться неизменным')
+                image = form_data.get("image")
+                if image:
+                    self.assertTrue(
+                        Post.objects.filter(
+                            author=PostFormTests.user.id,
+                            text=PostFormTests.post.text,
+                            image=f'posts/{image}'
+                        ).exists(),
+                        'У поста должна быть использована '
+                        f'картинка {str(image)}'
+                    )
+                else:
+                    self.assertTrue(
+                        PostFormTests.post.image == image,
+                        'У поста должна отсутствовать картинка'
+                    )
 
 
 class CommentFormTest(TestCase):
@@ -391,8 +458,22 @@ class CommentFormTest(TestCase):
         self.assertEqual(CommentFormTest.post.comments.count(),
                          count + 1,
                          'Количество комментариев должно увеличиться на 1')
-        comment = Comment.objects.get(text=form_data['text'],
-                                      author=CommentFormTest.user)
-        self.assertIn(comment,
-                      response.context.get('comments'),
-                      'Комментарий должен быть в контексте страницы')
+
+    def test_comment_from_text_validator(self):
+        """Проверяем, что в комментарии с запретным словом оно заменится на
+        количество звездочек равной длине слова."""
+
+        word = 'донцова'
+        Obscene.objects.create(word=word)
+        form_data = {
+            'text': f'Тестовый комментарий о {word.upper()}'
+        }
+        response = self.authorized_client.post(
+            CommentFormTest.url,
+            data=form_data,
+            follow=True
+        )
+        self.assertContains(response,
+                            '*' * len(word),
+                            'Текст страницы не должен содержать '
+                            'запретное слово')

@@ -33,7 +33,8 @@ class PostModelTest(TestCase):
         post = PostModelTest.post
         field_help_texts = {
             'text': 'Введите текст поста',
-            'group': 'Группа, к которой будет относиться пост'
+            'group': 'Группа, к которой будет относиться пост',
+            'image': 'Картинка вашего поста'
         }
         for field, expected_value in field_help_texts.items():
             with self.subTest(field=field):
@@ -50,7 +51,8 @@ class PostModelTest(TestCase):
         post = PostModelTest.post
         field_verbose_name = {
             'text': 'Текст поста',
-            'group': 'Группа'
+            'group': 'Группа',
+            'image': 'Картинка поста'
         }
         for field, expected_value in field_verbose_name.items():
             with self.subTest(field=field):
@@ -143,9 +145,8 @@ class FollowModelTest(TestCase):
 
         follow = FollowModelTest.follow
         self.assertEqual(str(follow),
-                         follow.user.username
-                         + ' подписан на '
-                         + follow.author.username,
+                         f'{follow.user.username} подписан '
+                         f'на {follow.author.username}',
                          'Для модели Follow строковое '
                          'представление должно быть равно '
                          'user.username + " подписан на " + '

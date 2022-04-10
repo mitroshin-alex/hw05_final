@@ -9,7 +9,7 @@ from django.conf import settings
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.core.cache import cache
 
-from ..models import Group, Post, Follow
+from ..models import Group, Post, Follow, Comment
 
 TEMP_MEDIA_ROOT = tempfile.mkdtemp(dir=settings.BASE_DIR)
 TEST_CACHE_SETTING = {
@@ -198,6 +198,7 @@ class PostPagesTests(TestCase):
         form_fields = {
             'text': forms.fields.CharField,
             'group': forms.fields.ChoiceField,
+            'image': forms.fields.ImageField,
         }
         response = self.authorized_client.get(reverse('posts:post_create'))
         for field, expected in form_fields.items():
@@ -216,6 +217,7 @@ class PostPagesTests(TestCase):
         form_fields = {
             'text': forms.fields.CharField,
             'group': forms.fields.ChoiceField,
+            'image': forms.fields.ImageField,
         }
         post = PostPagesTests.post_2
         response = self.authorized_client.get(
@@ -444,8 +446,8 @@ class FollowTests(TestCase):
         self.authorized_client_2.force_login(FollowTests.user_2)
         self.authorized_client_3.force_login(FollowTests.user_3)
 
-    def test_following_and_unfollowing(self):
-        """Проверяем, что пользователь может подписаться и отписаться."""
+    def test_following(self):
+        """Проверяем, что пользователь может подписаться."""
 
         self.assertFalse(
             Follow.objects.filter(
@@ -471,7 +473,18 @@ class FollowTests(TestCase):
             ).exists(),
             'Подписка должна быть в базе данных'
         )
-        response_unfollow = self.authorized_client_1.get(
+
+    def test_unfollowing(self):
+        """Проверяем, что пользователь может отписаться."""
+
+        self.assertTrue(
+            Follow.objects.filter(
+                user=FollowTests.user_3,
+                author=FollowTests.user_2
+            ).exists(),
+            'Пользователь 3 должен быть подписан на пользователя 2'
+        )
+        response_unfollow = self.authorized_client_3.get(
             FollowTests.url_unfollow,
             follow=True
         )
@@ -483,10 +496,10 @@ class FollowTests(TestCase):
         )
         self.assertFalse(
             Follow.objects.filter(
-                user=FollowTests.user_1,
+                user=FollowTests.user_3,
                 author=FollowTests.user_2
             ).exists(),
-            'Пользователь 1 не должен быть подписан на пользователя 2'
+            'Пользователь 3 не должен быть подписан на пользователя 2'
         )
 
     def test_follow_index(self):
@@ -515,3 +528,47 @@ class FollowTests(TestCase):
             ).object_list,
             'Пост должен отсутствовать в ленте подписанного пользователя'
         )
+
+
+class CommentTests(TestCase):
+    @classmethod
+    def setUpClass(cls):
+        super().setUpClass()
+        cls.user = User.objects.create_user(username='test',
+                                            email='test@test.test',
+                                            password='password')
+        cls.post_1 = Post.objects.create(
+            author=cls.user,
+            text='Тестовая пост 1',
+        )
+        cls.post_2 = Post.objects.create(
+            author=cls.user,
+            text='Тестовая пост 2',
+        )
+
+    def setUp(self):
+        self.authorized_client = Client()
+        self.authorized_client.force_login(CachePagesTests.user)
+
+    def test_comment_context(self):
+        """Проверяем, что комментарии присутствуют в контексте страницы
+        просмотра поста и не присутствует в контексте другого поста."""
+        comment = Comment.objects.create(
+            post=CommentTests.post_1,
+            text='Тестовый комментарий',
+            author=CommentTests.user)
+        response_post_1 = self.authorized_client.get(
+            reverse('posts:post_detail',
+                    kwargs={'post_id': CommentTests.post_1.id}),
+        )
+        self.assertIn(comment,
+                      response_post_1.context.get('comments'),
+                      'Комментарий должен быть в контексте страницы')
+        response_post_2 = self.authorized_client.get(
+            reverse('posts:post_detail',
+                    kwargs={'post_id': CommentTests.post_2.id}),
+        )
+        self.assertNotIn(comment,
+                         response_post_2.context.get('comments'),
+                         'Комментарий должен отсутствовать в '
+                         'контексте страницы')

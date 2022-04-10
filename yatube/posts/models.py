@@ -1,6 +1,7 @@
 from django.db import models
 from django.contrib.auth import get_user_model
 from django.conf import settings
+from django.db.models import Q, F
 
 User = get_user_model()
 
@@ -50,6 +51,7 @@ class Post(models.Model):
     )
     image = models.ImageField(
         verbose_name='Картинка поста',
+        help_text='Картинка вашего поста',
         upload_to='posts/',
         blank=True
     )
@@ -83,6 +85,10 @@ class Comment(models.Model):
         auto_now_add=True,
         verbose_name='Дата публикации')
 
+    class Meta:
+        verbose_name = 'Комментарий'
+        verbose_name_plural = 'Комментарии'
+
     def __str__(self):
         return self.text[:settings.COMMENT_STR_LIMIT]
 
@@ -103,6 +109,28 @@ class Follow(models.Model):
 
     class Meta:
         unique_together = ('user', 'author')
+        verbose_name = 'Подписка'
+        verbose_name_plural = 'Подписки'
+        constraints = [
+            models.UniqueConstraint(fields=['user', 'author'],
+                                    name='unique_following'),
+            models.CheckConstraint(check=~Q(user_id=F('author_id')),
+                                   name='not_following_self',),
+        ]
 
     def __str__(self):
         return self.user.username + ' подписан на ' + self.author.username
+
+
+class Obscene(models.Model):
+    word = models.CharField(
+        max_length=50,
+        verbose_name='Не разрешенное слово',
+        unique=True,
+        null=False,
+        blank=False,
+    )
+
+    class Meta:
+        verbose_name = 'Слово'
+        verbose_name_plural = 'Слова'
