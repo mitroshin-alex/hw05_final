@@ -9,7 +9,7 @@ from django.utils import timezone
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.conf import settings
 
-from ..models import Group, Post, Obscene
+from ..models import Group, Post
 from ..forms import PostForm, CommentForm
 
 TEMP_MEDIA_ROOT = tempfile.mkdtemp(dir=settings.BASE_DIR)
@@ -458,22 +458,3 @@ class CommentFormTest(TestCase):
         self.assertEqual(CommentFormTest.post.comments.count(),
                          count + 1,
                          'Количество комментариев должно увеличиться на 1')
-
-    def test_comment_from_text_validator(self):
-        """Проверяем, что в комментарии с запретным словом оно заменится на
-        количество звездочек равной длине слова."""
-
-        word = 'донцова'
-        Obscene.objects.create(word=word)
-        form_data = {
-            'text': f'Тестовый комментарий о {word.upper()}'
-        }
-        response = self.authorized_client.post(
-            CommentFormTest.url,
-            data=form_data,
-            follow=True
-        )
-        self.assertContains(response,
-                            '*' * len(word),
-                            'Текст страницы не должен содержать '
-                            'запретное слово')
