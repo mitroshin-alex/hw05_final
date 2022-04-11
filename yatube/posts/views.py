@@ -41,10 +41,9 @@ def profile(request, username):
     count = post_list.count()
     page_obj = create_paginator(request, post_list)
 
-    following = Follow.objects.filter(
+    following = request.user.is_authenticated and Follow.objects.filter(
         user=request.user,
-        author=author
-    ).exists() and request.user.is_authenticated
+        author=author).exists()
     context = {'author': author,
                'page_obj': page_obj,
                'count': count,

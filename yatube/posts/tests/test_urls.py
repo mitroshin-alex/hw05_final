@@ -28,15 +28,15 @@ class PostURLTests(TestCase):
             text='Тестовая пост',
         )
         cls.url_available_to_everyone = {
-            '/': ('posts/index.html',
-                  'base.html',
-                  'includes/header.html',
-                  'includes/footer.html'),
-            f'/group/{cls.group.slug}/': (
-                'posts/group_list.html',
-                'base.html',
-                'includes/header.html',
-                'includes/footer.html'),
+            # '/': ('posts/index.html',
+            #       'base.html',
+            #       'includes/header.html',
+            #       'includes/footer.html'),
+            # f'/group/{cls.group.slug}/': (
+            #     'posts/group_list.html',
+            #     'base.html',
+            #     'includes/header.html',
+            #     'includes/footer.html'),
             f'/profile/{cls.user_author.username}/': (
                 'posts/profile.html',
                 'base.html',
@@ -95,9 +95,9 @@ class PostURLTests(TestCase):
 
         urls_templates_tuple = PostURLTests.url_available_to_everyone.items()
         for address, templates in urls_templates_tuple:
+            response = self.guest_client.get(address)
             for template in templates:
                 with self.subTest(address=address, template=template):
-                    response = self.guest_client.get(address)
                     self.assertTemplateUsed(
                         response,
                         template,
@@ -139,9 +139,9 @@ class PostURLTests(TestCase):
 
         urls = PostURLTests.url_available_to_authorized_user.items()
         for address, templates in urls:
+            response = self.author_client.get(address)
             for template in templates:
                 with self.subTest(address=address, template=template):
-                    response = self.author_client.get(address)
                     self.assertTemplateUsed(
                         response,
                         template,
