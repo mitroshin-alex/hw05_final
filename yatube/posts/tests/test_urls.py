@@ -61,11 +61,11 @@ class PostURLTests(TestCase):
                 'includes/footer.html'),
             '/follow/': (
                 'posts/follow.html',
-                 'base.html',
-                 'includes/header.html',
-                 'posts/includes/switcher.html',
-                 'posts/includes/paginator.html',
-                 'includes/footer.html'),
+                'base.html',
+                'includes/header.html',
+                'posts/includes/switcher.html',
+                'posts/includes/paginator.html',
+                'includes/footer.html'),
             f'/profile/{cls.user_author.username}/follow/': '',
             f'/profile/{cls.user_author.username}/unfollow/': '',
         }
